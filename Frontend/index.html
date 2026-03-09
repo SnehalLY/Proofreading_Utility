@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internal Data Utility</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        :root {
+            --brand-orange: #FF6B00;
+            --brand-gray: #F4F4F7;
+            --text-dark: #1A1A1B;
+        }
+
+        body {
+            background-color: var(--brand-gray);
+            color: var(--text-dark);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .orange-button {
+            background-color: var(--brand-orange);
+            color: white;
+            transition: all 0.2s ease;
+        }
+
+        .orange-button:hover {
+            background-color: #E66000;
+            transform: translateY(-1px);
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 10px;
+        }
+
+        /* Toast notifications */
+        #toastContainer > div {
+            transform: translateY(0);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <h1 class="text-xl font-bold">
+            Internal Data <span class="text-[#FF6B00];">Utility</span>
+        </h1>
+        
+        <!-- User Info & Logout -->
+        <div class="flex items-center gap-4">
+            <div class="text-sm">
+                <div id="userDisplay" class="font-semibold"></div>
+                <div id="roleDisplay" class="text-xs mt-0.5"></div>
+            </div>
+            <button id="pendingReqBtn" onclick="showPendingRequests()" class="hidden text-gray-600 hover:text-orange-600 text-sm font-medium px-3 py-1 rounded hover:bg-gray-100" title="Pending requests">
+                Pending
+            </button>
+            <button id="batchPushBtn" onclick="showBatchPushModal()" class="hidden text-gray-600 hover:text-orange-600 text-sm font-medium px-3 py-1 rounded hover:bg-gray-100" title="Batch push all unsynced questions to RTU">
+                Batch Push
+            </button>
+            <button id="activityLogBtn" onclick="showActivityLog()" class="text-gray-600 hover:text-orange-600 text-sm font-medium px-3 py-1 rounded hover:bg-gray-100" title="View activity log">
+                History
+            </button>
+            <button onclick="logoutAndRedirect()" class="text-gray-600 hover:text-gray-900 text-sm font-medium">
+                Logout
+            </button>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto p-6 grid grid-cols-12 gap-6">
+
+    <!-- LEFT PANEL -->
+    <div class="col-span-12 lg:col-span-4 space-y-4 min-w-[320px]">
+
+        <!-- SEARCH BY QB -->
+        <div class="card p-4">
+            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
+                Search by Question Bank
+            </label>
+
+            <input
+                id="qbInput"
+                list="qbList"
+                placeholder="Select Question Bank..."
+                class="w-full mb-3 border rounded-md px-3 py-2 text-sm outline-none"
+            />
+
+            <button
+                onclick="loadQuestionsByQB()"
+                class="orange-button w-full py-2 rounded-md text-sm font-medium">
+                Search by QB
+            </button>
+
+            <datalist id="qbList"></datalist>
+        </div>
+
+        <!-- SEARCH BY QID -->
+        <div class="card p-4">
+            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
+                Search by Question ID
+            </label>
+
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Enter QID"
+                class="w-full mb-3 border rounded-md px-3 py-2 text-sm outline-none"
+            />
+
+            <button
+                onclick="searchByQID()"
+                class="orange-button w-full py-2 rounded-md text-sm font-medium">
+                Search by QID
+            </button>
+        </div>
+
+        <!-- RESULT LIST (ONLY IDS / SHORT VIEW) -->
+        <div class="card">
+            <div class="bg-gray-50 px-4 py-3 border-b flex justify-between items-center gap-2 flex-wrap">
+                <div>
+                    <span class="text-sm font-bold text-gray-600">Results (<span id="resultCount">0</span>)</span>
+                    <div id="resultContext" class="text-xs text-gray-400 mt-0.5"></div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+                    <select id="statusFilter" onchange="applyStatusFilter()" class="border-2 border-gray-300 rounded-md px-2 py-1 text-xs font-bold text-gray-700 bg-white focus:border-[#FF6B00] focus:outline-none cursor-pointer">
+                        <option value="all">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+            </div>
+            <div id="resultsList"
+                class="p-4 space-y-2 max-h-[400px] overflow-y-auto custom-scroll">
+                <div class="text-center text-gray-400 text-sm">
+                    Results will appear here
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL - FULL QUESTION VIEW -->
+    <div class="col-span-12 lg:col-span-8">
+        <div class="card p-6 max-h-[700px] overflow-y-auto custom-scroll">
+            <div id="fullQuestionView" class="space-y-6">
+                <div class="flex flex-col items-center justify-center py-16 text-gray-300 gap-3 select-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-14 h-14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <p class="text-sm font-medium text-gray-400">Search a Question Bank or QID to get started</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+
+<!-- EDITOR MODAL (Hidden by default) -->
+<div id="mainEditor" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+        
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <div class="flex items-center gap-3">
+                    <h2 class="text-2xl font-bold" id="displayQid"></h2>
+                    <span class="text-gray-300 text-xl font-light">|</span>
+                    <span class="text-sm text-gray-500 font-medium">QB Name: <span id="displayBank"></span></span>
+                </div>
+            </div>
+            <button onclick="document.getElementById('mainEditor').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl">
+                ✕
+            </button>
+        </div>
+
+        <div class="space-y-4">
+            <!-- Question Text -->
+            <div>
+                <label class="block text-sm font-semibold mb-2">Question</label>
+                <textarea id="fieldQuestion" readonly class="w-full border rounded p-3 text-sm" rows="4"></textarea>
+            </div>
+
+            <!-- Options -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Option A</label>
+                    <input type="text" id="fieldOptA" readonly class="w-full border rounded p-2 text-sm" />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Option B</label>
+                    <input type="text" id="fieldOptB" readonly class="w-full border rounded p-2 text-sm" />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Option C</label>
+                    <input type="text" id="fieldOptC" readonly class="w-full border rounded p-2 text-sm" />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Option D</label>
+                    <input type="text" id="fieldOptD" readonly class="w-full border rounded p-2 text-sm" />
+                </div>
+            </div>
+
+            <!-- Answer & Difficulty -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Correct Answer</label>
+                    <select id="fieldAnswer" disabled class="w-full border rounded p-2 text-sm">
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Difficulty Level</label>
+                    <select id="fieldDifficulty" disabled class="w-full border rounded p-2 text-sm">
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Explanation -->
+            <div>
+                <label class="block text-sm font-semibold mb-2">Answer Explanation</label>
+                <textarea id="fieldExplanation" readonly class="w-full border rounded p-3 text-sm" rows="4"></textarea>
+            </div>
+
+            <!-- Save and Close Button -->
+            <div class="flex justify-end gap-3 pt-4 border-t">
+                <!-- Action buttons based on role -->
+                <button id="btnSave" onclick="handleSaveQuestion()" class="hidden orange-button px-4 py-2 rounded-md text-sm font-medium">
+                    Save Changes
+                </button>
+                <button id="btnReview" onclick="handleReviewQuestion()" class="hidden bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium transition">
+                    Mark as Complete
+                </button>
+                <button id="btnPushRTU" onclick="handlePushToRTU()" class="hidden bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition">
+                    Push to RTU
+                </button>
+                
+                <button onclick="document.getElementById('mainEditor').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-md text-sm font-medium">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- BATCH PUSH MODAL -->
+<div id="batchPushModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl flex flex-col" style="height:88vh">
+        <!-- Fixed header -->
+        <div class="flex justify-between items-center px-6 py-4 border-b flex-shrink-0">
+            <div>
+                <h2 class="text-2xl font-bold">&#x1F680; Batch Push to RTU</h2>
+                <p id="batchPushSummary" class="text-sm text-gray-500 mt-0.5">Loading unsynced questions…</p>
+            </div>
+            <button onclick="document.getElementById('batchPushModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+        </div>
+        <!-- Scrollable list -->
+        <div id="batchPushList" class="flex-1 overflow-y-auto custom-scroll px-6 py-4 space-y-2">
+            <div class="text-center text-gray-400 py-8">Loading…</div>
+        </div>
+        <!-- Fixed footer -->
+        <div class="px-6 py-4 border-t flex-shrink-0 flex justify-between items-center">
+            <span id="batchPushFooterNote" class="text-xs text-gray-400">All unsynced questions will be pushed regardless of review status.</span>
+            <button id="batchPushConfirmBtn" onclick="handleBatchPush()" class="orange-button px-6 py-2 rounded-md text-sm font-semibold disabled:opacity-50" disabled>
+                Push All to RTU
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- REVIEW QUEUE MODAL -->
+<div id="reviewQueueModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-5xl flex flex-col" style="height:92vh">
+        <!-- Fixed header -->
+        <div class="flex justify-between items-center px-6 py-4 border-b flex-shrink-0">
+            <div>
+                <h2 class="text-2xl font-bold">&#x1F4CB; Review Queue</h2>
+                <p class="text-sm text-gray-500 mt-0.5">Questions edited and waiting to be marked Complete. Edit if needed, then mark Complete.</p>
+            </div>
+            <button onclick="document.getElementById('reviewQueueModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+        </div>
+        <!-- Scrollable content -->
+        <div id="reviewQueueContent" class="flex-1 overflow-y-auto custom-scroll p-6 space-y-6">
+            <div class="text-center text-gray-400 py-8">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<!-- PENDING REQUESTS MODAL -->
+<div id="pendingRequestsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Pending Signup Requests</h2>
+            <button onclick="document.getElementById('pendingRequestsModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+        </div>
+
+        <div id="pendingRequestsContent" class="space-y-3">
+            <div class="text-center text-gray-400">Loading pending requests...</div>
+        </div>
+
+        <div class="flex justify-end pt-4 border-t mt-6">
+            <button onclick="document.getElementById('pendingRequestsModal').classList.add('hidden')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">Close</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- QUESTION HISTORY MODAL -->
+<div id="questionHistoryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+        
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Question History</h2>
+            <button onclick="document.getElementById('questionHistoryModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl">
+                ✕
+            </button>
+        </div>
+
+        <div id="historyContent" class="space-y-4">
+            <div class="text-center text-gray-400">Loading history...</div>
+        </div>
+
+        <div class="flex justify-end pt-4 border-t mt-6">
+            <button onclick="document.getElementById('questionHistoryModal').classList.add('hidden')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- HIGH-LEVEL HISTORY MODAL -->
+<div id="highLevelHistoryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+        
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Activity Log</h2>
+            <button onclick="document.getElementById('highLevelHistoryModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl">
+                ✕
+            </button>
+        </div>
+
+        <div id="highLevelHistoryContent" class="space-y-3">
+            <div class="text-center text-gray-400">Loading activity log...</div>
+        </div>
+
+        <div class="flex justify-between items-center pt-4 border-t mt-6">
+            <div>
+                <button id="btnBackfillAudit" onclick="handleBackfillEdits()" class="hidden bg-yellow-100 text-yellow-800 px-3 py-1 rounded text-sm font-semibold mr-2">Backfill audit logs</button>
+            </div>
+            <div>
+                <button onclick="document.getElementById('highLevelHistoryModal').classList.add('hidden')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ADMIN CHANGE HISTORY MODAL -->
+<div id="changeHistoryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Change History</h2>
+            <button onclick="document.getElementById('changeHistoryModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl">
+                [×]
+            </button>
+        </div>
+
+        <!-- Filter Options -->
+        <div class="bg-gray-50 p-4 rounded mb-4 flex flex-wrap gap-4 items-end">
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">View Type</label>
+                <select id="historyViewType" onchange="refreshChangeHistory()" class="border rounded px-3 py-2 text-sm">
+                    <option value="all">All Changes</option>
+                    <option value="question">Question History</option>
+                    <option value="user">User Activity</option>
+                    <option value="field">Field Changes</option>
+                </select>
+            </div>
+
+            <div id="questionFilterDiv" class="hidden">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Question ID</label>
+                <input id="historyQuestionId" type="number" placeholder="Enter QID" class="border rounded px-3 py-2 text-sm w-32">
+            </div>
+
+            <div id="userFilterDiv" class="hidden">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Username</label>
+                <input id="historyUsername" type="text" placeholder="Username" class="border rounded px-3 py-2 text-sm w-32">
+            </div>
+
+            <div id="fieldFilterDiv" class="hidden">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Field Name</label>
+                <select id="historyFieldName" class="border rounded px-3 py-2 text-sm w-32">
+                    <option value="">Select field...</option>
+                    <option value="question">Question</option>
+                    <option value="optionA">Option A</option>
+                    <option value="optionB">Option B</option>
+                    <option value="optionC">Option C</option>
+                    <option value="optionD">Option D</option>
+                    <option value="explanation">Explanation</option>
+                </select>
+            </div>
+
+            <button onclick="refreshChangeHistory()" class="orange-button px-4 py-2 rounded text-sm font-medium">
+                Load
+            </button>
+
+            <button onclick="loadChangeStatistics()" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium">
+                Stats
+            </button>
+        </div>
+
+        <!-- Change History Content -->
+        <div id="changeHistoryContent" class="space-y-3">
+            <div class="text-center text-gray-400 py-8">Select view type and click Load to view changes</div>
+        </div>
+
+        <div class="flex justify-end pt-4 border-t mt-6">
+            <button onclick="document.getElementById('changeHistoryModal').classList.add('hidden')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- QUESTION COMPARISON MODAL -->
+<div id="questionComparisonModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Track Versions</h2>
+            <button onclick="document.getElementById('questionComparisonModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl">
+                [×]
+            </button>
+        </div>
+
+        <div id="comparisonContent" class="space-y-4">
+            <div class="text-center text-gray-400 py-8">Loading...</div>
+        </div>
+
+        <div class="flex justify-end pt-4 border-t mt-6">
+            <button onclick="document.getElementById('questionComparisonModal').classList.add('hidden')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- TOAST CONTAINER -->
+<div id="toastContainer" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 items-end pointer-events-none"></div>
+
+<script src="api.js"></script>
+<script src="ui.js"></script>
+
+<div id="globalLoader" 
+    class="hidden fixed inset-0 bg-white bg-opacity-70 flex items-center justify-center z-50">
+    <div class="w-12 h-12 border-4 border-[#FF6B00] border-t-transparent rounded-full animate-spin"></div>
+</div>
+
+</body>
+</html>

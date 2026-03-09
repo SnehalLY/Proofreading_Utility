@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign Up - Internal Data Utility</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        :root {
+            --brand-orange: #FF6B00;
+            --brand-gray: #F4F4F7;
+            --text-dark: #1A1A1B;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--brand-gray) 0%, #E8E8EB 100%);
+            color: var(--text-dark);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 420px;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #E2E8F0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: var(--brand-orange);
+            box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+        }
+
+        .primary-button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--brand-orange);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        .primary-button:hover {
+            background-color: #E66000;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+        }
+
+        .secondary-link {
+            display: block;
+            text-align: center;
+            margin-top: 18px;
+            font-size: 13px;
+            color: var(--brand-orange);
+            font-weight: 600;
+        }
+
+        .secondary-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="header">
+            <h1>Internal Data <span style="color: var(--brand-orange);">Utility</span></h1>
+            <p>Create your account</p>
+        </div>
+
+        <form id="signupForm">
+
+            <div class="input-group">
+                <label>First & Last Name</label>
+                <input type="text" id="signupUsername" placeholder="John Doe" required />
+            </div>
+
+            <div class="input-group">
+                <label>Email</label>
+                <input type="email" id="signupEmail" placeholder="john.doe@imocha.co" required />
+                <small style="color: #666; font-size: 11px; margin-top: 4px;"></small>
+            </div>
+
+            <div style="background: #F0F9FF; border-left: 4px solid #0369A1; padding: 12px; border-radius: 4px; margin-top: 16px; font-size: 12px; color: #0369A1;">
+                <strong>📌 Important:</strong> All new signups require admin approval. An administrator will review your request and assign your role.
+            </div>
+
+            <button type="submit" class="primary-button">
+                Create Account
+            </button>
+
+        </form>
+
+        <a href="login.html" class="secondary-link">
+            Already have an account? Login
+        </a>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="ui.js"></script>
+    <script>
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('signupUsername').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
+            
+            // Email validation regex:
+            //   Regular user : firstname.surname@imocha.[anything]
+            //   RTU sub-user : name_rtu@imocha.io  /  name.x_rtu@imocha.io  /  name.surname_rtu@imocha.co
+            const emailRegex = /^([a-zA-Z]+\.[a-zA-Z]+@imocha\.[a-zA-Z]+|[a-zA-Z]+(\.[a-zA-Z]+)*_rtu@imocha\.(io|co))$/;
+            
+            if (!emailRegex.test(email)) {
+                alert('❌ Invalid email format!\n\nAccepted formats:\n• Regular: firstname.surname@imocha.co\n• RTU sub-user: name_rtu@imocha.io or name.x_rtu@imocha.co\n\nExamples: john.doe@imocha.co · shikha_rtu@imocha.io · juili.e_rtu@imocha.io');
+                return;
+            }
+            
+            if (!username) {
+                alert('❌ Please enter your full name');
+                return;
+            }
+            
+            try {
+                const response = await signupUser({
+                    username: username,
+                    email: email
+                });
+                
+                if (response.user_id) {
+                    alert('✅ Signup successful!\n\nYour account has been submitted for admin approval. You will receive a notification once your request is reviewed. Thank you!');
+                    window.location.href = 'login.html';
+                } else {
+                    alert('❌ ' + (response.error || 'Signup failed'));
+                }
+            } catch (error) {
+                alert('❌ Error during signup: ' + error.message);
+            }
+        });
+    </script>
+
+</body>
+</html>

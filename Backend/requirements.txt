@@ -1,0 +1,6 @@
+flask
+flask-cors
+pyodbc
+pymongo
+python-dotenv
+# APScheduler  # uncomment to enable nightly scheduled RTU push (scheduler.py)

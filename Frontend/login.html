@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Internal Data Utility</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --brand-orange: #FF6B00;
+            --brand-gray: #F4F4F7;
+            --text-dark: #1A1A1B;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--brand-gray) 0%, #E8E8EB 100%);
+            color: var(--text-dark);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #E2E8F0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--brand-orange);
+            box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+        }
+
+        .user-selector {
+            margin-bottom: 24px;
+        }
+
+        .user-selector label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .user-option {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 2px solid #E2E8F0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .user-option:hover {
+            border-color: var(--brand-orange);
+            background-color: #FFF5F0;
+        }
+
+        .user-option input[type="radio"] {
+            margin-right: 12px;
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+        }
+
+        .user-info {
+            flex-grow: 1;
+        }
+
+        .user-info .username {
+            font-weight: 600;
+            color: #1A1A1B;
+        }
+
+        .user-info .role-badge {
+            display: inline-block;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .role-editor {
+            background-color: #E0F2FE;
+            color: #0369A1;
+        }
+
+        .role-reviewer {
+            background-color: #FEF3C7;
+            color: #92400E;
+        }
+
+        .role-admin {
+            background-color: #F0FDF4;
+            color: #15803D;
+        }
+
+        .role-senior-editor {
+            background-color: #F3E8FF;
+            color: #7C3AED;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 12px 24px;
+            background-color: var(--brand-orange);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 24px;
+        }
+
+        .login-button:hover {
+            background-color: #E66000;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+        }
+
+        .login-button:disabled {
+            background-color: #CCC;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info-box {
+            background-color: #F0F9FF;
+            border-left: 4px solid #0369A1;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 24px;
+            font-size: 12px;
+            color: #0369A1;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-card">
+        <div class="login-header">
+            <h1>Internal Data <span style="color: var(--brand-orange);">Utility</span></h1>
+            <p>Secure Login</p>
+        </div>
+
+        <form id="loginForm">
+            <!-- Error Message -->
+            <div id="errorMessage" style="color: #DC2626; font-size: 12px; margin-bottom: 16px; padding: 8px; background: #FEE2E2; border-radius: 4px; display: none;"></div>
+
+            <!-- Available Users -->
+            <div id="userSelector" class="user-selector"></div>
+
+            <!-- Manual Username/Email Input -->
+            <div class="input-group">
+                <label for="usernameInput">Username or Email</label>
+                <input 
+                    type="text" 
+                    id="usernameInput" 
+                    placeholder="Enter your username or email"
+                    required
+                    autocomplete="username"
+                />
+            </div>
+
+            <button type="submit" class="login-button" id="loginBtn">Login</button>
+            <a href="signup.html">New user? Sign up</a>
+        </form>
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        let allUsers = [];
+
+        // Fetch all available users from backend
+        async function loadUsers() {
+            try {
+                console.log('🔄 Fetching users from backend…');
+                const response = await fetch(`${API_BASE}/auth/users`, {
+                    credentials: 'include'
+                });
+                
+                console.log('📡 Response status:', response.status);
+                
+                if (!response.ok) {
+                    const error = await response.text();
+                    console.error(`❌ Backend returned ${response.status}: ${error}`);
+                    document.getElementById('errorMessage').textContent = `Failed to load users: ${response.status}. Make sure backend is running.`;
+                    return;
+                }
+                
+                const responseData = await response.json();
+                console.log('📦 Raw response data:', responseData);
+                
+                // Handle both array and object with users property
+                allUsers = Array.isArray(responseData) ? responseData : (responseData.users || []);
+                
+                console.log('✅ Users loaded:', allUsers);
+                console.log(`✅ Total users: ${allUsers.length}`);
+                
+                if (!Array.isArray(allUsers) || allUsers.length === 0) {
+                    console.warn('⚠️ No users found in database.');
+                    document.getElementById('errorMessage').innerHTML = `
+                        <strong>No users found!</strong><br>
+                        Please ensure at least one user exists in MongoDB.
+                    `;
+                    return;
+                }
+                
+                // Show available users for quick login
+                showAvailableUsers(allUsers);
+                document.getElementById('errorMessage').textContent = '';
+                
+            } catch (err) {
+                console.error('❌ Error loading users:', err);
+                document.getElementById('errorMessage').innerHTML = `
+                    <strong>Failed to connect to backend:</strong><br>
+                    • Backend running on port 5000? (Run: python app.py in Backend folder)<br>
+                    • MongoDB running?<br>
+                    Error: ${err.message}
+                `;
+            }
+        }
+
+        function showAvailableUsers(users) {
+            const userSelector = document.getElementById('userSelector');
+            userSelector.innerHTML = '<label><strong>Quick Select User:</strong></label>';
+            
+            users.forEach(user => {
+                const option = document.createElement('div');
+                option.className = 'user-option';
+                const pendingBadge = user.is_pending ? ' <span style="color: #DC2626; font-weight: 600;">(Pending Approval)</span>' : '';
+                option.innerHTML = `
+                    <input type="radio" name="selectedUser" value="${user.id}" id="user_${user.id}" ${user.is_pending ? 'disabled' : ''}>
+                    <div class="user-info">
+                        <div class="username">${user.username}${pendingBadge}</div>
+                        <span class="role-badge role-${user.role.toLowerCase().replace(/\s+/g, '-')}">${user.role}</span>
+                    </div>
+                `;
+                option.onclick = () => {
+                    if (!user.is_pending) {
+                        document.getElementById(`user_${user.id}`).checked = true;
+                        document.getElementById('usernameInput').value = user.username;
+                    }
+                };
+                if (user.is_pending) {
+                    option.style.opacity = '0.6';
+                    option.style.cursor = 'not-allowed';
+                }
+                userSelector.appendChild(option);
+            });
+        }
+
+        // Handle login form submission
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('usernameInput').value.trim();
+
+            // Validate input
+            if (!username) {
+                alert('Please enter your username or email');
+                return;
+            }
+
+            // Find user in the loaded users list
+            const user = allUsers.find(u => u.username === username || u.email === username);
+            if (!user) {
+                alert(`❌ User not found: "${username}"\n\nAvailable users:\n${allUsers.map(u => `  • ${u.username} (${u.role})`).join('\n')}`);
+                return;
+            }
+
+            try {
+                // Attempt backend login
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ user_id: user.id })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.user) {
+                    // Store user info in localStorage
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    console.log('✅ Logged in as:', data.user.username, `(${data.user.role})`);
+                    
+                    // Redirect to main page
+                    window.location.href = 'index.html';
+                } else {
+                    const errorMsg = data.error || 'Unknown error';
+                    
+                    // Check if it's a pending approval error
+                    if (data.is_pending) {
+                        alert('⏳ Account Pending Admin Approval\n\n' + 
+                              'Your signup has been submitted for admin review.\n' +
+                              'You will be notified once an administrator approves your request.\n\n' +
+                              'Please try again later.');
+                    } else {
+                        alert('❌ Login failed:\n' + errorMsg);
+                    }
+                    console.error('Login error:', data);
+                }
+            } catch (err) {
+                console.error('❌ Login error:', err);
+                alert('❌ Login failed: ' + err.message + '\n\nMake sure backend is running on port 5000');
+            }
+        });
+
+        // Load users when page loads
+        window.addEventListener('load', () => loadUsers());
+    </script>
+</body>
+
+</html>
