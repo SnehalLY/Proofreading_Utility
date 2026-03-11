@@ -382,7 +382,12 @@ def get_question_with_qtd_flow(question_id):
 # FETCH QUESTION BANKS (List + Search + Limit)
 @question_bp.route("/api/question-banks", methods=["GET"])
 def get_question_banks():
-    db = get_db_connection()
+    try:
+        db = get_db_connection()
+    except Exception as e:
+        print(f"[QB_LIST] SQL connection failed: {e}")
+        return jsonify({"error": "Database connection failed", "detail": str(e)}), 503
+
     cursor = db.cursor()
 
     limit = request.args.get("limit", 5000, type=int)
@@ -407,12 +412,17 @@ def get_question_banks():
         ORDER BY QBName ASC
     """
 
-    search_param = f"%{search}%"
-    cursor.execute(query, (limit, search_param, search_param))
+    try:
+        search_param = f"%{search}%"
+        cursor.execute(query, (limit, search_param, search_param))
 
-    rows = cursor.fetchall()
-    columns = [col[0] for col in cursor.description]
-    data = [dict(zip(columns, row)) for row in rows]
+        rows = cursor.fetchall()
+        columns = [col[0] for col in cursor.description]
+        data = [dict(zip(columns, row)) for row in rows]
+    except Exception as e:
+        print(f"[QB_LIST] Query failed: {e}")
+        cursor.close(); db.close()
+        return jsonify({"error": "Query failed", "detail": str(e)}), 500
 
     cursor.close()
     db.close()
