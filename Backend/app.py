@@ -73,6 +73,29 @@ def handle_500(e):
 # start_scheduler(app)
 # ──────────────────────────────────────────────────────────────────────────────
 
+@app.route('/api/health')
+def health_check():
+    """Debug endpoint — shows configured DB env vars (passwords masked)."""
+    server = os.getenv('AZURE_DB_SERVER', '<not set>')
+    port = os.getenv('AZURE_DB_PORT', '<not set>')
+    db_name = os.getenv('AZURE_DB_NAME', '<not set>')
+    user = os.getenv('AZURE_DB_USER', '<not set>')
+    pwd = os.getenv('AZURE_DB_PASSWORD', '')
+    mongo = os.getenv('MONGO_URL', '<not set>')
+
+    return jsonify({
+        "status": "running",
+        "azure_sql": {
+            "server": server,
+            "port": port,
+            "database": db_name,
+            "user": user,
+            "password": f"{pwd[:3]}***" if len(pwd) > 3 else "<not set>",
+            "constructed_server_string": f"tcp:{server},{port}" if not server.startswith("tcp:") else f"{server},{port}"
+        },
+        "mongo_url": f"{mongo[:20]}***" if mongo and len(mongo) > 20 else "<not set>"
+    })
+
 @app.route('/')
 def serve_index():
     return app.send_static_file('index.html')

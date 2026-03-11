@@ -20,9 +20,18 @@ load_dotenv()
 # ── SQL Server (RTU) ─────────────────────────────────────────────────────────
 def get_db_connection():
     """Open and return a fresh pyodbc connection to the Azure SQL Server (RTU)."""
+    server = os.getenv('AZURE_DB_SERVER', '')
+    port = os.getenv('AZURE_DB_PORT', '1433')
+
+    # Build SERVER value — avoid doubling "tcp:" if it's already in the env var
+    if server.startswith('tcp:'):
+        server_str = f"{server},{port}"
+    else:
+        server_str = f"tcp:{server},{port}"
+
     conn_str = (
         "DRIVER={ODBC Driver 18 for SQL Server};"
-        f"SERVER=tcp:{os.getenv('AZURE_DB_SERVER')},{os.getenv('AZURE_DB_PORT')};"
+        f"SERVER={server_str};"
         f"DATABASE={os.getenv('AZURE_DB_NAME')};"
         f"UID={os.getenv('AZURE_DB_USER')};"
         f"PWD={os.getenv('AZURE_DB_PASSWORD')};"
