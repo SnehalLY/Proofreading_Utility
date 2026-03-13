@@ -1,16 +1,16 @@
-const API_BASE = "http://127.0.0.1:5000/api";
+const API_BASE = window.location.origin + "/api";
 console.log("✅ api.js loaded, API_BASE:", API_BASE);
 
 // =====================================================
 // AUTHENTICATION APIS
 // =====================================================
-async function loginUser(usernameOrEmail) {
+async function loginUser(userId) {
     try {
         const res = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ username_or_email: usernameOrEmail })
+            body: JSON.stringify({ user_id: userId })
         });
         return await res.json();
     } catch (err) {
