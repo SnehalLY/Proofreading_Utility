@@ -108,13 +108,11 @@ async function checkAuthentication() {
             console.warn('batchPushBtn not found in DOM');
         }
 
-        // Show overall History button for Admin only
-        // (Editor / Senior Editor can use per-question history from the question card)
+        // Show overall History button for all authenticated users
         try {
             const activityLogBtn = document.getElementById('activityLogBtn');
             if (activityLogBtn) {
-                if (currentUser.role === 'Admin') activityLogBtn.classList.remove('hidden');
-                else activityLogBtn.classList.add('hidden');
+                activityLogBtn.classList.remove('hidden');
             }
         } catch (e) {
             console.warn('activityLogBtn not found in DOM');
@@ -1481,6 +1479,8 @@ document.addEventListener("DOMContentLoaded", () => {
 async function trackVersions(questionId) {
     const modal = document.getElementById('questionComparisonModal');
     const contentDiv = document.getElementById('comparisonContent');
+    const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+    const userId = currentUser?.id || storedUser?.id || '';
 
     modal.classList.remove('hidden');
     contentDiv.innerHTML = '<div class="text-center text-gray-500 py-8">Loading versions...</div>';
@@ -1488,7 +1488,7 @@ async function trackVersions(questionId) {
     try {
         const res = await fetch(`${API_BASE}/admin/questions/${questionId}/compare`, {
             credentials: 'include',
-            headers: { 'X-User-Id': currentUser?._id || '' }
+            headers: { 'X-User-Id': userId }
         });
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
         const data = await res.json();

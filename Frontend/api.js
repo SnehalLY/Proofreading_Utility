@@ -1,16 +1,16 @@
-const API_BASE = window.location.origin + "/api";
+const API_BASE = "http://127.0.0.1:5000/api";
 console.log("✅ api.js loaded, API_BASE:", API_BASE);
 
 // =====================================================
 // AUTHENTICATION APIS
 // =====================================================
-async function loginUser(userId) {
+async function loginUser(usernameOrEmail) {
     try {
         const res = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ user_id: userId })
+            body: JSON.stringify({ username_or_email: usernameOrEmail })
         });
         return await res.json();
     } catch (err) {
@@ -186,7 +186,11 @@ async function pushToRTU(questionId) {
 
 async function getQuestionHistory(questionId) {
     try {
+        const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
         const res = await fetch(`${API_BASE}/questions/${questionId}/history`, {
+            headers: {
+                ...(storedUser?.id ? { 'X-User-Id': storedUser.id } : {})
+            },
             credentials: 'include'
         });
         
@@ -205,7 +209,11 @@ async function getQuestionHistory(questionId) {
 
 async function getHighLevelHistory(limit = 100, offset = 0) {
     try {
+        const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
         const res = await fetch(`${API_BASE}/history/high-level?limit=${limit}&offset=${offset}`, {
+            headers: {
+                ...(storedUser?.id ? { 'X-User-Id': storedUser.id } : {})
+            },
             credentials: 'include'
         });
         
@@ -225,8 +233,12 @@ async function getHighLevelHistory(limit = 100, offset = 0) {
 // Backfill audit logs from existing edited documents (Admin only)
 async function backfillEdits() {
     try {
+        const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
         const res = await fetch(`${API_BASE}/history/backfill-edits`, {
             method: 'POST',
+            headers: {
+                ...(storedUser?.id ? { 'X-User-Id': storedUser.id } : {})
+            },
             credentials: 'include'
         });
         if (!res.ok) {
