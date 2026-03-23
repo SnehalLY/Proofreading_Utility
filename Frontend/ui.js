@@ -15,6 +15,70 @@ function hideLoader() {
 }
 
 // =====================================================
+// UTILITY: FORMAT DATE IN INDIAN TIME
+// =====================================================
+function formatIndianTime(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const raw = String(dateStr).trim();
+        const hasTz = /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw);
+        const isIsoLike = /^\d{4}-\d{2}-\d{2}T/.test(raw);
+        const normalized = isIsoLike && !hasTz ? `${raw}Z` : raw;
+        const parsed = new Date(normalized);
+        if (Number.isNaN(parsed.getTime())) return raw;
+
+        return parsed.toLocaleString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZone: 'Asia/Kolkata'
+        });
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+// =====================================================
+// MODAL CLOSE ON OUTSIDE CLICK
+// =====================================================
+document.addEventListener('DOMContentLoaded', function() {
+    const modals = [
+        'questionHistoryModal',
+        'highLevelHistoryModal',
+        'questionComparisonModal',
+        'batchPushModal'
+    ];
+    
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    unlockBodyScroll();
+                }
+            });
+        }
+    });
+    
+    // Add Escape key support to close modals
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' || e.key === 'Esc') {
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (modal && !modal.classList.contains('hidden')) {
+                    modal.classList.add('hidden');
+                    unlockBodyScroll();
+                }
+            });
+        }
+    });
+});
+
+// =====================================================
 // HELPER: DISPLAY CHANGES
 // =====================================================
 function renderChangesSection(changes) {
@@ -195,6 +259,9 @@ function formatForDisplay(value) {
     if (value === null || value === undefined) return '';
 
     const asString = String(value)
+        // Handle literal escaped newlines that may arrive from some payloads.
+        .replace(/\\n/g, '\n')
+        .replace(/\\r\\n/g, '\n')
         .replace(/<\s*br\s*\/?\s*>/gi, '\n')
         .replace(/<\s*\/p\s*>/gi, '\n')
         .replace(/<\s*\/div\s*>/gi, '\n')
@@ -203,7 +270,170 @@ function formatForDisplay(value) {
     return escapeHTML(asString)
         .replace(/\r\n/g, '\n')
         .replace(/\r/g, '\n')
+        .replace(/[\u2028\u2029]/g, '\n')
         .replace(/\n/g, '<br>');
+}
+
+function formatForEditor(value) {
+    if (value === null || value === undefined) return '';
+
+    const asString = String(value)
+        .replace(/\\r\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+        .replace(/<\s*\/p\s*>/gi, '\n')
+        .replace(/<\s*\/div\s*>/gi, '\n')
+        .replace(/<\s*p[^>]*>/gi, '')
+        .replace(/<\s*div[^>]*>/gi, '')
+        .replace(/<[^>]*>/g, '');
+
+    return asString
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .replace(/[\u2028\u2029]/g, '\n');
+}
+
+function firstAnswer(value) {
+    const raw = value === null || value === undefined ? '' : String(value);
+    return raw ? raw.split(',')[0].trim() : 'A';
+}
+
+function normalizeOption(value, fallback) {
+    if (value === null || value === undefined) return fallback;
+    const normalized = String(value);
+    return normalized === '' ? fallback : normalized;
+}
+
+function normalizeQuestion(rawQuestion, { bankOverride = null, qbIdOverride = null } = {}) {
+    if (!rawQuestion || !rawQuestion.id) return null;
+
+    return {
+        id: rawQuestion.id,
+        displayId: `QID-${rawQuestion.id}`,
+        bank: bankOverride ?? (rawQuestion.skill ? String(rawQuestion.skill).trim() : 'Unknown Bank'),
+        qbId: rawQuestion.qb_id || qbIdOverride || null,
+        question: rawQuestion.questionText !== null && rawQuestion.questionText !== undefined
+            ? String(rawQuestion.questionText)
+            : 'No question text',
+        difficulty: rawQuestion.difficultyLevel ? String(rawQuestion.difficultyLevel).trim() : 'Easy',
+        status: rawQuestion.reviewStatus === 'Reviewed' ? 'Completed' : (rawQuestion.reviewStatus || 'Pending'),
+        reviewedBy: rawQuestion.ReviewedByName || rawQuestion.ReviewedBy || null,
+        reviewedOn: rawQuestion.ReviewedOn || null,
+        isEdited: rawQuestion.isEdited || false,
+        source: rawQuestion.source || 'rtu',
+        lastModifiedBy: rawQuestion.lastModifiedBy || null,
+        lastModifiedDate: rawQuestion.lastModifiedDate || null,
+        isSynced: rawQuestion.isSynced || false,
+        lastSyncedByName: rawQuestion.lastSyncedByName || null,
+        lastSyncedDate: rawQuestion.lastSyncedDate || null,
+        changes: rawQuestion.changes || {},
+        options: {
+            A: normalizeOption(rawQuestion.optionA, '[No Option A]'),
+            B: normalizeOption(rawQuestion.optionB, '[No Option B]'),
+            C: normalizeOption(rawQuestion.optionC, '[No Option C]'),
+            D: normalizeOption(rawQuestion.optionD, '[No Option D]')
+        },
+        answer: firstAnswer(rawQuestion.correctAnswer),
+        explanation: rawQuestion.answerExplanation !== null && rawQuestion.answerExplanation !== undefined
+            ? String(rawQuestion.answerExplanation)
+            : 'No explanation'
+    };
+}
+
+function buildStatusBadge(question) {
+    if (question.status === 'Completed') {
+        return `
+            <div class="text-green-600 font-semibold">
+                Completed
+                ${question.reviewedBy ? `
+                    <div class="text-xs text-gray-500">
+                        by ${escapeHTML(question.reviewedBy)}
+                        ${question.reviewedOn ? `on ${formatIndianTime(question.reviewedOn)}` : ''}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    return '<span class="text-red-500 font-semibold">Pending</span>';
+}
+
+function buildQuestionCardHTML(question, compactHeader = false) {
+    const statusBadge = buildStatusBadge(question);
+    const headerBlock = compactHeader
+        ? `
+            <div class="font-bold text-lg">${escapeHTML(question.displayId)}</div>
+            <div class="text-sm text-gray-500">${escapeHTML(question.bank)}</div>
+        `
+        : `
+            <div class="flex items-center gap-2">
+                <span class="font-bold text-lg">QID: ${escapeHTML(question.displayId.replace('QID-', ''))}</span>
+                <span class="text-gray-300 font-light">|</span>
+                <span class="text-sm text-gray-500">QB Name: ${escapeHTML(question.bank)}</span>
+            </div>
+        `;
+
+    return `
+        <div class="flex justify-between items-start mb-3">
+            <div>
+                ${headerBlock}
+                ${question.status === 'Completed' ? `<div class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded mt-1 inline-block">Completed</div>` : question.isEdited ? `<div class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded mt-1 inline-block">Edited</div>` : ''}
+            </div>
+
+            <button class="edit-btn orange-button text-white text-xs font-semibold px-3 py-1.5 rounded-md" data-qid="${escapeHTML(question.displayId)}">
+                Edit
+            </button>
+        </div>
+
+        <div class="mb-3 font-medium">
+            Q: ${formatForDisplay(question.question)}
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+            <div>A) ${formatForDisplay(question.options.A)}</div>
+            <div>B) ${formatForDisplay(question.options.B)}</div>
+            <div>C) ${formatForDisplay(question.options.C)}</div>
+            <div>D) ${formatForDisplay(question.options.D)}</div>
+        </div>
+
+        <div class="bg-gray-50 p-3 rounded text-sm mb-3">
+            <strong>Explanation:</strong> ${formatForDisplay(question.explanation)}
+        </div>
+
+        ${question.isEdited && Object.keys(question.changes).length > 0 ? renderChangesSection(question.changes) : ''}
+
+        <div class="flex justify-between items-center text-sm border-t pt-3 mb-3">
+            <div>
+                <strong>Difficulty:</strong> ${escapeHTML(question.difficulty)}
+            </div>
+            <div>
+                <strong>Status:</strong> ${statusBadge}
+            </div>
+        </div>
+
+        ${question.isSynced ? `
+        <div class="text-sm border-t pt-3 mb-3">
+            <strong>Pushed to RTU:</strong>
+            <div class="text-green-600 font-semibold mt-1">
+                Pushed
+                <div class="text-xs text-gray-500">
+                    by ${question.lastSyncedByName || 'Unknown'}
+                    ${question.lastSyncedDate ? `on ${formatIndianTime(question.lastSyncedDate)}` : ''}
+                </div>
+            </div>
+        </div>
+        ` : ''}
+
+        ${question.isEdited ? `
+        <div class="bg-blue-50 p-2 rounded text-xs text-gray-700 mb-2 border-l-4 border-blue-400">
+            <strong>📝 Last Modified:</strong> ${question.lastModifiedBy || 'Unknown'} on ${question.lastModifiedDate ? formatIndianTime(question.lastModifiedDate) : 'Unknown date'}
+        </div>
+        ` : ''}
+
+        <div class="flex gap-2 mt-1">
+            <button class="track-versions-btn text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-semibold px-3 py-1 rounded" onclick="trackVersions(${question.id})">Track Versions</button>
+            <button class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-3 py-1 rounded" onclick="showQuestionHistory(${question.id})">History</button>
+        </div>
+    `;
 }
 
 // -------------------------------
@@ -302,33 +532,9 @@ async function loadQuestionsByQB() {
                 return;
             }
 
-            questions = raw.map(q => ({
-                id: q.id,
-                displayId: `QID-${q.id}`,
-                bank: matchedQB.name,
-                qbId: q.qb_id || matchedQB.id || null,
-                question: q.questionText,
-                difficulty: q.difficultyLevel || "Easy",
-                status: q.reviewStatus === 'Reviewed' ? 'Completed' : (q.reviewStatus || "Pending"),
-                reviewedBy: q.ReviewedByName || q.ReviewedBy || null,
-                reviewedOn: q.ReviewedOn || null,
-                isEdited: q.isEdited || false,
-                source: q.source || 'rtu',
-                lastModifiedBy: q.lastModifiedBy || null,
-                lastModifiedDate: q.lastModifiedDate || null,
-                isSynced: q.isSynced || false,
-                lastSyncedByName: q.lastSyncedByName || null,
-                lastSyncedDate: q.lastSyncedDate || null,
-                changes: q.changes || {},
-                options: {
-                    A: q.optionA || "",
-                    B: q.optionB || "",
-                    C: q.optionC || "",
-                    D: q.optionD || ""
-                },
-                answer: q.correctAnswer || "A",
-                explanation: q.answerExplanation || ""
-            }));
+            questions = raw
+                .map(q => normalizeQuestion(q, { bankOverride: matchedQB.name, qbIdOverride: matchedQB.id }))
+                .filter(Boolean);
 
             renderQuestionList(questions);
             const ctxEl = document.getElementById('resultContext');
@@ -366,39 +572,11 @@ async function searchByQID() {
             return;
         }
 
-        // Extract first correct answer if multiple (e.g., "A,B,C" -> "A")
-        const correctAnswerValue = result.correctAnswer 
-            ? result.correctAnswer.split(',')[0].trim()
-            : "A";
-
-        // Normalize the data - VALIDATE EACH FIELD
-       const normalizedQuestion = {
-            id: result.id,
-            displayId: result.id ? `QID-${result.id}` : "QID-UNKNOWN",
-            bank: result.skill ? String(result.skill).trim() : "Unknown Bank",
-            qbId: result.qb_id || null,
-            question: result.questionText ? String(result.questionText).trim() : "No question text",
-            difficulty: result.difficultyLevel ? String(result.difficultyLevel).trim() : "Easy",
-            status: result.reviewStatus === 'Reviewed' ? 'Completed' : (result.reviewStatus || "Pending"),
-            reviewedBy: result.ReviewedByName || result.ReviewedBy || null,
-            reviewedOn: result.ReviewedOn || null,
-            isEdited: result.isEdited || false,
-            source: result.source || 'rtu',
-            lastModifiedBy: result.lastModifiedBy || null,
-            lastModifiedDate: result.lastModifiedDate || null,
-            isSynced: result.isSynced || false,
-            lastSyncedByName: result.lastSyncedByName || null,
-            lastSyncedDate: result.lastSyncedDate || null,
-            changes: result.changes || {},
-            options: {
-                A: result.optionA !== null && result.optionA !== undefined ? String(result.optionA).trim() || "[No Option A]" : "[No Option A]",
-                B: result.optionB !== null && result.optionB !== undefined ? String(result.optionB).trim() || "[No Option B]" : "[No Option B]",
-                C: result.optionC !== null && result.optionC !== undefined ? String(result.optionC).trim() || "[No Option C]" : "[No Option C]",
-                D: result.optionD !== null && result.optionD !== undefined ? String(result.optionD).trim() || "[No Option D]" : "[No Option D]"
-            },
-            answer: correctAnswerValue,
-            explanation: result.answerExplanation ? String(result.answerExplanation).trim() : "No explanation"
-        };
+        const normalizedQuestion = normalizeQuestion(result);
+        if (!normalizedQuestion) {
+            renderQuestionList([]);
+            return;
+        }
 
         questions = [normalizedQuestion];
         renderQuestionList(questions);
@@ -416,7 +594,6 @@ async function searchByQID() {
 // Render Results
 // -------------------------------
 function renderQuestionList(questionArray) {
-
     const resultList = document.getElementById("resultsList");
     const fullView = document.getElementById("fullQuestionView");
     const countSpan = document.getElementById("resultCount");
@@ -434,109 +611,23 @@ function renderQuestionList(questionArray) {
         return;
     }
 
-    questionsToRender.forEach((question, index) => {
+    questionsToRender.forEach((question) => {
         // LEFT SIDE SIMPLE LIST
         const listItem = document.createElement('div');
         listItem.className = 'p-2 border rounded cursor-pointer hover:bg-gray-50 text-sm font-medium';
         listItem.textContent = question.displayId;
         listItem.onclick = () => scrollToQuestion(question.displayId);
         resultList.appendChild(listItem);
-
-        // STATUS BADGE
-        let statusBadge = '';
-
-if (question.status === "Completed") {
-    statusBadge = `
-        <div class="text-green-600 font-semibold">
-            Completed
-            ${question.reviewedBy ? `
-                <div class="text-xs text-gray-500">
-                    by ${escapeHTML(question.reviewedBy)}
-                    ${question.reviewedOn ? `on ${new Date(question.reviewedOn).toLocaleString()}` : ''}
-                </div>
-            ` : ''}
-        </div>
-    `;
-} else {
-    statusBadge = `<span class="text-red-500 font-semibold">Pending</span>`;
-}
-
         // RIGHT SIDE FULL VIEW - Create elements
         const questionCard = document.createElement('div');
         questionCard.id = `question-${question.displayId}`;
         questionCard.className = 'border rounded-lg p-5 bg-white';
-        
-        questionCard.innerHTML = `
-            <div class="flex justify-between items-start mb-3">
-                <div>
-                    <div class="flex items-center gap-2">
-                        <span class="font-bold text-lg">QID: ${escapeHTML(question.displayId.replace('QID-', ''))}</span>
-                        <span class="text-gray-300 font-light">|</span>
-                        <span class="text-sm text-gray-500">QB Name: ${escapeHTML(question.bank)}</span>
-                    </div>
-                    ${question.status === 'Completed' ? `<div class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded mt-1 inline-block">Completed</div>` : question.isEdited ? `<div class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded mt-1 inline-block">Edited</div>` : ''}
-                </div>
+        questionCard.innerHTML = buildQuestionCardHTML(question, false);
 
-                <button class="edit-btn orange-button text-white text-xs font-semibold px-3 py-1.5 rounded-md" data-qid="${escapeHTML(question.displayId)}">
-                    Edit
-                </button>
-            </div>
-
-            <div class="mb-3 font-medium">
-                Q: ${formatForDisplay(question.question)}
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                <div>A) ${formatForDisplay(question.options.A)}</div>
-                <div>B) ${formatForDisplay(question.options.B)}</div>
-                <div>C) ${formatForDisplay(question.options.C)}</div>
-                <div>D) ${formatForDisplay(question.options.D)}</div>
-            </div>
-
-            <div class="bg-gray-50 p-3 rounded text-sm mb-3">
-                <strong>Explanation:</strong> ${formatForDisplay(question.explanation)}
-            </div>
-
-            ${question.isEdited && Object.keys(question.changes).length > 0 ? renderChangesSection(question.changes) : ''}
-
-            <div class="flex justify-between items-center text-sm border-t pt-3 mb-3">
-                <div>
-                    <strong>Difficulty:</strong> ${escapeHTML(question.difficulty)}
-                </div>
-                <div>
-                    <strong>Status:</strong> ${statusBadge}
-                </div>
-            </div>
-
-            ${question.isSynced ? `
-            <div class="text-sm border-t pt-3 mb-3">
-                <strong>Pushed to RTU:</strong>
-                <div class="text-green-600 font-semibold mt-1">
-                    Pushed
-                    <div class="text-xs text-gray-500">
-                        by ${question.lastSyncedByName || 'Unknown'}
-                        ${question.lastSyncedDate ? `on ${new Date(question.lastSyncedDate).toLocaleString()}` : ''}
-                    </div>
-                </div>
-            </div>
-            ` : ''}
-            
-            ${question.isEdited ? `
-            <div class="bg-blue-50 p-2 rounded text-xs text-gray-700 mb-2 border-l-4 border-blue-400">
-                <strong>📝 Last Modified:</strong> ${question.lastModifiedBy || 'Unknown'} on ${question.lastModifiedDate ? new Date(question.lastModifiedDate).toLocaleString() : 'Unknown date'}
-            </div>
-            ` : ''}
-            
-            <div class="flex gap-2 mt-1">
-                <button class="track-versions-btn text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-semibold px-3 py-1 rounded" onclick="trackVersions(${question.id})">Track Versions</button>
-                <button class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-3 py-1 rounded" onclick="showQuestionHistory(${question.id})">History</button>
-            </div>
-        `;
-        
         // Add event listener for Edit button
         const editBtn = questionCard.querySelector('.edit-btn');
         editBtn.addEventListener('click', () => selectQuestion(question.id));
-        
+
         fullView.appendChild(questionCard);
     });
 }
@@ -547,31 +638,36 @@ function selectQuestion(id) {
     const q = questions.find(item => item.id === id);
     if (!q) return;
 
-
-    
     document.getElementById("mainEditor").classList.remove("hidden");
 
     document.getElementById("displayQid").innerText = 'QID: ' + q.displayId.replace('QID-', '');
     document.getElementById("displayBank").innerText = q.bank || '';
 
-    document.getElementById("fieldQuestion").value = q.question;
-    document.getElementById("fieldOptA").value = q.options.A;
-    document.getElementById("fieldOptB").value = q.options.B;
-    document.getElementById("fieldOptC").value = q.options.C;
-    document.getElementById("fieldOptD").value = q.options.D;
+    const editorQuestion = formatForEditor(q.question);
+    const editorOptA = formatForEditor(q.options.A);
+    const editorOptB = formatForEditor(q.options.B);
+    const editorOptC = formatForEditor(q.options.C);
+    const editorOptD = formatForEditor(q.options.D);
+    const editorExplanation = formatForEditor(q.explanation);
+
+    document.getElementById("fieldQuestion").value = editorQuestion;
+    document.getElementById("fieldOptA").value = editorOptA;
+    document.getElementById("fieldOptB").value = editorOptB;
+    document.getElementById("fieldOptC").value = editorOptC;
+    document.getElementById("fieldOptD").value = editorOptD;
 
     document.getElementById("fieldAnswer").value = q.answer;
     document.getElementById("fieldDifficulty").value = q.difficulty;
-    document.getElementById("fieldExplanation").value = q.explanation;
+    document.getElementById("fieldExplanation").value = editorExplanation;
 
     // Snapshot original values so Save can detect whether anything actually changed
     window.originalFormValues = {
-        question:    q.question,
-        optionA:     q.options.A,
-        optionB:     q.options.B,
-        optionC:     q.options.C,
-        optionD:     q.options.D,
-        explanation: q.explanation
+        question:    editorQuestion,
+        optionA:     editorOptA,
+        optionB:     editorOptB,
+        optionC:     editorOptC,
+        optionD:     editorOptD,
+        explanation: editorExplanation
     };
 
     // Store current question ID + QB info for actions
@@ -579,16 +675,16 @@ function selectQuestion(id) {
     window.currentQBId   = q.qbId   || null;
     window.currentQBName = q.bank   || null;
     setSaveProgress(false);
-    
+
     // Set read-only based on role (Editor, Senior Editor and Admin can edit)
     const canEdit = hasAnyRole(currentUser, ['Editor', 'Senior Editor', 'Admin']);
     setReadOnlyMode(!canEdit);
-    
+
     // Show/hide action buttons based on role
     const btnSave = document.getElementById('btnSave');
     const btnReview = document.getElementById('btnReview');
     const btnPushRTU = document.getElementById('btnPushRTU');
-    
+
     // Keep buttons visible; disable when role is not authorized so users can understand why action is unavailable.
     btnSave.classList.remove('hidden');
     btnReview.classList.remove('hidden');
@@ -649,7 +745,7 @@ async function showQuestionHistory(questionId) {
 
         const fmt = iso => {
             if (!iso) return 'N/A';
-            try { return new Date(iso).toLocaleString(); } catch { return iso; }
+            return formatIndianTime(iso);
         };
 
         // Badge colours per action type
@@ -741,7 +837,7 @@ async function loadGlobalHistory() {
                 
                 let dateStr = 'N/A';
                 if (entry.action_date) {
-                    try { dateStr = new Date(entry.action_date).toLocaleString(); }
+                    try { dateStr = formatIndianTime(entry.action_date); }
                     catch(e) { dateStr = entry.action_date; }
                 }
                 
@@ -814,7 +910,7 @@ async function showReviewQueue() {
         } else {
             content.innerHTML = queue.map(q => {
                 const qid    = q.que_id;
-                const date   = q.last_modified_date ? new Date(q.last_modified_date).toLocaleString() : '—';
+                const date   = q.last_modified_date ? formatIndianTime(q.last_modified_date) : '—';
                 const qb     = escapeHTML(q.qb_name  || (q.qb_id ? `QB-${q.qb_id}` : 'Unknown QB'));
                 const editor = escapeHTML(q.last_modified_by_name || '?');
                 const role   = escapeHTML(q.last_modified_role    || '?');
@@ -1024,7 +1120,7 @@ async function showPendingRequests() {
                     <div>
                         <div class="font-semibold">${escapeHTML(u.username)}</div>
                         <div class="text-xs text-gray-600">${escapeHTML(u.email)}</div>
-                        <div class="text-xs text-gray-400">${new Date(u.created_at).toLocaleString()}</div>
+                        <div class="text-xs text-gray-400">${formatIndianTime(u.created_at)}</div>
                     </div>
                     <div class="flex items-center gap-2">
                         <select id="role_${u.id}" class="border border-gray-300 rounded text-sm px-2 py-1 focus:outline-none focus:border-orange-500">
@@ -1107,13 +1203,31 @@ async function handleBackfillEdits() {
 // TOAST NOTIFICATIONS
 // =====================================================
 function showToast(message, type = 'success') {
-    const container = document.getElementById('toastContainer');
+    const editor = document.getElementById('mainEditor');
+    const editorOpen = !!(editor && !editor.classList.contains('hidden'));
+    const editorContainer = document.getElementById('editorToastContainer');
+    const container = (editorOpen && editorContainer)
+        ? editorContainer
+        : document.getElementById('toastContainer');
+
     if (!container) { console.warn('[Toast]', message); return; }
+
     const colors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-blue-500', warning: 'bg-yellow-500' };
     const toast  = document.createElement('div');
     const isWarn = type === 'warning';
-    toast.className = `flex items-center gap-2 ${colors[type] || colors.success} ${isWarn ? 'text-gray-900' : 'text-white'} text-sm font-medium px-4 py-3 rounded-lg shadow-xl min-w-[220px] max-w-sm opacity-0`;
+
+    if (editorOpen && editorContainer) {
+        toast.className = `inline-flex items-center gap-2 ${colors[type] || colors.success} ${isWarn ? 'text-gray-900' : 'text-white'} text-xs sm:text-sm font-medium px-3 py-2 rounded-md shadow-lg max-w-full opacity-0`;
+    } else {
+        toast.className = `flex items-center gap-2 ${colors[type] || colors.success} ${isWarn ? 'text-gray-900' : 'text-white'} text-sm font-medium px-4 py-3 rounded-lg shadow-xl min-w-[220px] max-w-sm opacity-0`;
+    }
+
     toast.innerHTML = `<span>${message}</span>`;
+
+    if (editorOpen && editorContainer) {
+        container.innerHTML = '';
+    }
+
     container.appendChild(toast);
     requestAnimationFrame(() => requestAnimationFrame(() => { toast.style.opacity = '1'; }));
     setTimeout(() => {
@@ -1233,38 +1347,10 @@ async function handleSaveQuestion() {
         // Find and update the question in local array
         const qIndex = questions.findIndex(q => q.id === questionId);
         if (qIndex !== -1 && updatedQuestion) {
-            // Normalize the fresh data from backend
-            const correctAnswerValue = updatedQuestion.correctAnswer 
-                ? updatedQuestion.correctAnswer.split(',')[0].trim()
-                : "A";
-
-            const normalizedQuestion = {
-                id: updatedQuestion.id,
-                displayId: updatedQuestion.id ? `QID-${updatedQuestion.id}` : "QID-UNKNOWN",
-                bank: updatedQuestion.skill ? String(updatedQuestion.skill).trim() : "Unknown Bank",
-                qbId: updatedQuestion.qb_id || window.currentQBId || null,
-                question: updatedQuestion.questionText ? String(updatedQuestion.questionText).trim() : "No question text",
-                difficulty: updatedQuestion.difficultyLevel ? String(updatedQuestion.difficultyLevel).trim() : "Easy",
-                status: updatedQuestion.reviewStatus === 'Reviewed' ? 'Completed' : (updatedQuestion.reviewStatus || "Pending"),
-                reviewedBy: updatedQuestion.ReviewedByName || updatedQuestion.ReviewedBy || null,
-                reviewedOn: updatedQuestion.ReviewedOn || null,
-                isEdited: updatedQuestion.isEdited || false,
-                source: updatedQuestion.source || 'rtu',
-                lastModifiedBy: updatedQuestion.lastModifiedBy || null,
-                lastModifiedDate: updatedQuestion.lastModifiedDate || null,
-                isSynced: updatedQuestion.isSynced || false,
-                lastSyncedByName: updatedQuestion.lastSyncedByName || null,
-                lastSyncedDate: updatedQuestion.lastSyncedDate || null,
-                changes: updatedQuestion.changes || {},
-                options: {
-                    A: updatedQuestion.optionA !== null && updatedQuestion.optionA !== undefined ? String(updatedQuestion.optionA).trim() || "[No Option A]" : "[No Option A]",
-                    B: updatedQuestion.optionB !== null && updatedQuestion.optionB !== undefined ? String(updatedQuestion.optionB).trim() || "[No Option B]" : "[No Option B]",
-                    C: updatedQuestion.optionC !== null && updatedQuestion.optionC !== undefined ? String(updatedQuestion.optionC).trim() || "[No Option C]" : "[No Option C]",
-                    D: updatedQuestion.optionD !== null && updatedQuestion.optionD !== undefined ? String(updatedQuestion.optionD).trim() || "[No Option D]" : "[No Option D]"
-                },
-                answer: correctAnswerValue,
-                explanation: updatedQuestion.answerExplanation ? String(updatedQuestion.answerExplanation).trim() : "No explanation"
-            };
+            const normalizedQuestion = normalizeQuestion(updatedQuestion, { qbIdOverride: window.currentQBId || null });
+            if (!normalizedQuestion) {
+                return;
+            }
             
             // Update in local array
             questions[qIndex] = normalizedQuestion;
@@ -1303,88 +1389,8 @@ function reRenderSingleQuestion(question) {
         return;
     }
 
-    // STATUS BADGE
-    let statusBadge = '';
-    if (question.status === "Completed") {
-        statusBadge = `
-            <div class="text-green-600 font-semibold">
-                Completed
-                ${question.reviewedBy ? `
-                    <div class="text-xs text-gray-500">
-                        by ${escapeHTML(question.reviewedBy)}
-                        ${question.reviewedOn ? `on ${new Date(question.reviewedOn).toLocaleString()}` : ''}
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    } else {
-        statusBadge = `<span class="text-red-500 font-semibold">Pending</span>`;
-    }
-
     // Update the card HTML
-    questionCard.innerHTML = `
-        <div class="flex justify-between items-start mb-3">
-            <div>
-                <div class="font-bold text-lg">${escapeHTML(question.displayId)}</div>
-                <div class="text-sm text-gray-500">${escapeHTML(question.bank)}</div>
-                ${question.status === 'Completed' ? `<div class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded mt-1 inline-block">Completed</div>` : question.isEdited ? `<div class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded mt-1 inline-block">Edited</div>` : ''}
-            </div>
-
-            <button class="edit-btn orange-button text-white text-xs font-semibold px-3 py-1.5 rounded-md" data-qid="${escapeHTML(question.displayId)}">
-                Edit
-            </button>
-        </div>
-
-        <div class="mb-3 font-medium">
-            Q: ${formatForDisplay(question.question)}
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-            <div>A) ${formatForDisplay(question.options.A)}</div>
-            <div>B) ${formatForDisplay(question.options.B)}</div>
-            <div>C) ${formatForDisplay(question.options.C)}</div>
-            <div>D) ${formatForDisplay(question.options.D)}</div>
-        </div>
-
-        <div class="bg-gray-50 p-3 rounded text-sm mb-3">
-            <strong>Explanation:</strong> ${formatForDisplay(question.explanation)}
-        </div>
-
-        ${question.isEdited && Object.keys(question.changes).length > 0 ? renderChangesSection(question.changes) : ''}
-
-        <div class="flex justify-between items-center text-sm border-t pt-3 mb-3">
-            <div>
-                <strong>Difficulty:</strong> ${escapeHTML(question.difficulty)}
-            </div>
-            <div>
-                <strong>Status:</strong> ${statusBadge}
-            </div>
-        </div>
-
-        ${question.isSynced ? `
-        <div class="text-sm border-t pt-3 mb-3">
-            <strong>Pushed to RTU:</strong>
-            <div class="text-green-600 font-semibold mt-1">
-                Pushed
-                <div class="text-xs text-gray-500">
-                    by ${question.lastSyncedByName || 'Unknown'}
-                    ${question.lastSyncedDate ? `on ${new Date(question.lastSyncedDate).toLocaleString()}` : ''}
-                </div>
-            </div>
-        </div>
-        ` : ''}
-        
-        ${question.isEdited ? `
-        <div class="bg-blue-50 p-2 rounded text-xs text-gray-700 mb-2 border-l-4 border-blue-400">
-            <strong>📝 Last Modified:</strong> ${question.lastModifiedBy || 'Unknown'} on ${question.lastModifiedDate ? new Date(question.lastModifiedDate).toLocaleString() : 'Unknown date'}
-        </div>
-        ` : ''}
-        
-        <div class="flex gap-2 mt-1">
-            <button class="track-versions-btn text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-semibold px-3 py-1 rounded" onclick="trackVersions(${question.id})">Track Versions</button>
-            <button class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-3 py-1 rounded" onclick="showQuestionHistory(${question.id})">History</button>
-        </div>
-    `;
+    questionCard.innerHTML = buildQuestionCardHTML(question, true);
 
     // Re-add event listener for Edit button
     const editBtn = questionCard.querySelector('.edit-btn');
@@ -1410,13 +1416,18 @@ async function handleReviewQuestion() {
             reRenderSingleQuestion(q);
         }
 
-        document.getElementById('mainEditor').classList.add('hidden');
+        // Keep editor open after marking complete (same UX as Save).
+        const editor = document.getElementById('mainEditor');
+        if (editor) editor.classList.remove('hidden');
     } catch (err) {
         console.error('Error reviewing question:', err);
         showToast('Error: ' + err.message, 'error');
     } finally {
         isReviewingQuestion = false;
         setReviewProgress(false);
+        // Defensive reopen in case any parallel UI action hid the editor.
+        const editor = document.getElementById('mainEditor');
+        if (editor && window.currentQuestionId) editor.classList.remove('hidden');
     }
 }
 
@@ -1498,14 +1509,14 @@ async function showBatchPushModal() {
         const total     = docs.length;
         const completed = docs.filter(d => d.review_status === 'Completed').length;
         const pending   = total - completed;
-        summaryEl.textContent = `${total} question${total !== 1 ? 's' : ''} to push \u2014 ${completed} Reviewed, ${pending} Pending review`;
+        summaryEl.textContent = `${total} question${total !== 1 ? 's' : ''} to push \u2014 ${completed} Completed, ${pending} Pending review`;
 
         listEl.innerHTML = docs.map(doc => {
             const statusBadge = doc.review_status === 'Completed'
-                ? '<span class="inline-block bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded-full">\u2705 Reviewed</span>'
+                ? '<span class="inline-block bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded-full">\u2705 Completed</span>'
                 : '<span class="inline-block bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded-full">\u23f3 Pending Review</span>';
             const dateStr = doc.last_modified_date
-                ? new Date(doc.last_modified_date).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+                ? formatIndianTime(doc.last_modified_date)
                 : '\u2014';
             return `
             <div id="bprow-${doc.que_id}" class="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
@@ -1580,6 +1591,28 @@ async function handleBatchPush() {
 // TRACK VERSIONS - V1 (RTU) vs V2 (MongoDB) side by side
 // =====================================================
 
+// =====================================================
+// UTILITY: LOCK/UNLOCK BODY SCROLL FOR MODALS
+// =====================================================
+function lockBodyScroll() {
+    document.body.style.overflow = 'hidden';
+}
+
+function unlockBodyScroll() {
+    document.body.style.overflow = '';
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('hidden');
+        unlockBodyScroll();
+    }
+}
+
+// =====================================================
+// TRACK VERSIONS
+// =====================================================
 async function trackVersions(questionId) {
     const modal = document.getElementById('questionComparisonModal');
     const contentDiv = document.getElementById('comparisonContent');
@@ -1587,6 +1620,7 @@ async function trackVersions(questionId) {
     const userId = currentUser?.id || storedUser?.id || '';
 
     modal.classList.remove('hidden');
+    lockBodyScroll();
     contentDiv.innerHTML = '<div class="text-center text-gray-500 py-8">Loading versions...</div>';
 
     try {
@@ -1663,7 +1697,7 @@ function displayQuestionVersions(questionId, v1, versions) {
                                 ? 'Select a version below to compare'
                                 : 'No edits saved yet — showing RTU original'}
                     </div>
-                    ${v2 ? `<div class="text-xs text-blue-500 mt-1">Saved by <strong>${escapeHTML(v2.saved_by_name || '')}</strong>${v2.saved_at ? ' on ' + new Date(v2.saved_at).toLocaleString() : ''}</div>` : ''}
+                    ${v2 ? `<div class="text-xs text-blue-500 mt-1">Saved by <strong>${escapeHTML(v2.saved_by_name || '')}</strong>${v2.saved_at ? ' on ' + formatIndianTime(v2.saved_at) : ''}</div>` : ''}
                 </div>
                 <div class="flex gap-3 text-xs font-semibold shrink-0 mt-1">
                     <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-gray-200 inline-block"></span>${baseIsRTU ? 'V1 RTU' : `V${base.version} Local DB`}</span>

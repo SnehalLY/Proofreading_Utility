@@ -52,43 +52,63 @@
             transition: opacity 0.3s ease, transform 0.3s ease;
             pointer-events: auto;
         }
+
+        /* Responsive modals */
+        @media (max-width: 640px) {
+            #questionComparisonModal {
+                padding: 0 !important;
+            }
+            
+            #questionComparisonModal > div {
+                max-width: 100% !important;
+                max-height: 100vh !important;
+                border-radius: 0 !important;
+            }
+            
+            #mainEditor > div {
+                max-width: 100% !important;
+                max-height: 100vh !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+            }
+        }
     </style>
 </head>
 
 <body>
 
 <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <h1 class="text-xl font-bold">
-            Internal Data <span class="text-[#FF6B00];">Utility</span>
+    <div class="max-w-full mx-auto px-2 sm:px-4 md:px-6 h-auto sm:h-16 py-2 sm:py-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+        <h1 class="text-lg sm:text-xl font-bold">
+            Internal Data <span class="text-[#FF6B00]">Utility</span>
         </h1>
         
         <!-- User Info & Logout -->
-        <div class="flex items-center gap-4">
-            <div class="text-sm">
-                <div id="userDisplay" class="font-semibold"></div>
+        <div class="flex items-center gap-2 sm:gap-4 flex-wrap">
+            <div class="text-xs sm:text-sm">
+                <div id="userDisplay" class="font-semibold truncate"></div>
                 <div id="roleDisplay" class="text-xs mt-0.5"></div>
             </div>
-            <button id="pendingReqBtn" onclick="showPendingRequests()" class="hidden text-gray-600 hover:text-orange-600 text-sm font-medium px-3 py-1 rounded hover:bg-gray-100" title="Pending requests">
+            <button id="pendingReqBtn" onclick="showPendingRequests()" class="hidden text-gray-600 hover:text-orange-600 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded hover:bg-gray-100 whitespace-nowrap" title="Pending requests">
                 Pending
             </button>
-            <button id="batchPushBtn" onclick="showBatchPushModal()" class="hidden text-gray-600 hover:text-orange-600 text-sm font-medium px-3 py-1 rounded hover:bg-gray-100" title="Batch push all unsynced questions to RTU">
+            <button id="batchPushBtn" onclick="showBatchPushModal()" class="hidden text-gray-600 hover:text-orange-600 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded hover:bg-gray-100 whitespace-nowrap" title="Batch push all unsynced questions to RTU">
                 Batch Push
             </button>
-            <button id="activityLogBtn" onclick="showActivityLog()" class="text-gray-600 hover:text-orange-600 text-sm font-medium px-3 py-1 rounded hover:bg-gray-100" title="View activity log">
+            <button id="activityLogBtn" onclick="showActivityLog()" class="text-gray-600 hover:text-orange-600 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded hover:bg-gray-100 whitespace-nowrap" title="View activity log">
                 History
             </button>
-            <button onclick="logoutAndRedirect()" class="text-gray-600 hover:text-gray-900 text-sm font-medium">
+            <button onclick="logoutAndRedirect()" class="text-gray-600 hover:text-gray-900 text-xs sm:text-sm font-medium whitespace-nowrap">
                 Logout
             </button>
         </div>
     </div>
 </header>
 
-<main class="max-w-7xl mx-auto p-6 grid grid-cols-12 gap-6">
+<main class="w-full px-2 sm:px-4 md:px-6 py-4 sm:py-6 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
 
     <!-- LEFT PANEL -->
-    <div class="col-span-12 lg:col-span-4 space-y-4 min-w-[320px]">
+    <div class="col-span-1 md:col-span-4 space-y-3 sm:space-y-4">
 
         <!-- SEARCH BY QB -->
         <div class="card p-4">
@@ -158,8 +178,8 @@
     </div>
 
     <!-- RIGHT PANEL - FULL QUESTION VIEW -->
-    <div class="col-span-12 lg:col-span-8">
-        <div class="card p-6 max-h-[700px] overflow-y-auto custom-scroll">
+    <div class="col-span-1 md:col-span-8">
+        <div class="card p-4 sm:p-6 max-h-[calc(100vh-120px)] overflow-y-auto custom-scroll">
             <div id="fullQuestionView" class="space-y-6">
                 <div class="flex flex-col items-center justify-center py-16 text-gray-300 gap-3 select-none">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-14 h-14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -172,18 +192,18 @@
 
 
 <!-- EDITOR MODAL (Hidden by default) -->
-<div id="mainEditor" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+<div id="mainEditor" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex justify-between items-center mb-4 sm:mb-6">
             <div>
-                <div class="flex items-center gap-3">
-                    <h2 class="text-2xl font-bold" id="displayQid"></h2>
-                    <span class="text-gray-300 text-xl font-light">|</span>
-                    <span class="text-sm text-gray-500 font-medium">QB Name: <span id="displayBank"></span></span>
+                <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    <h2 class="text-xl sm:text-2xl font-bold" id="displayQid"></h2>
+                    <span class="text-gray-300 text-lg sm:text-xl font-light">|</span>
+                    <span class="text-xs sm:text-sm text-gray-500 font-medium">QB Name: <span id="displayBank"></span></span>
                 </div>
             </div>
-            <button onclick="document.getElementById('mainEditor').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl">
+            <button onclick="document.getElementById('mainEditor').classList.add('hidden')" class="flex-shrink-0 text-gray-500 hover:text-gray-700 text-2xl">
                 ✕
             </button>
         </div>
@@ -243,21 +263,25 @@
             </div>
 
             <!-- Save and Close Button -->
-            <div class="flex justify-end gap-3 pt-4 border-t">
-                <!-- Action buttons based on role -->
-                <button id="btnSave" onclick="handleSaveQuestion()" class="hidden orange-button px-4 py-2 rounded-md text-sm font-medium">
-                    Save Changes
-                </button>
-                <button id="btnReview" onclick="handleReviewQuestion()" class="hidden bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium transition">
-                    Mark as Complete
-                </button>
-                <button id="btnPushRTU" onclick="handlePushToRTU()" class="hidden bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition">
-                    Push to RTU
-                </button>
-                
-                <button onclick="document.getElementById('mainEditor').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-md text-sm font-medium">
-                    Close
-                </button>
+            <div class="flex items-center justify-between gap-3 pt-4 border-t">
+                <div id="editorToastContainer" class="flex-1 min-w-0"></div>
+
+                <div class="flex justify-end gap-3 flex-wrap">
+                    <!-- Action buttons based on role -->
+                    <button id="btnSave" onclick="handleSaveQuestion()" class="hidden orange-button px-4 py-2 rounded-md text-sm font-medium">
+                        Save Changes
+                    </button>
+                    <button id="btnReview" onclick="handleReviewQuestion()" class="hidden bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium transition">
+                        Mark as Complete
+                    </button>
+                    <button id="btnPushRTU" onclick="handlePushToRTU()" class="hidden bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition">
+                        Push to RTU
+                    </button>
+
+                    <button onclick="document.getElementById('mainEditor').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-md text-sm font-medium">
+                        Close
+                    </button>
+                </div>
             </div>
 
             <div id="saveProgressWrap" class="hidden mt-3">
@@ -280,7 +304,7 @@
                 <h2 class="text-2xl font-bold">&#x1F680; Batch Push to RTU</h2>
                 <p id="batchPushSummary" class="text-sm text-gray-500 mt-0.5">Loading unsynced questions…</p>
             </div>
-            <button onclick="document.getElementById('batchPushModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            <button onclick="closeModal('batchPushModal')" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
         </div>
         <!-- Scrollable list -->
         <div id="batchPushList" class="flex-1 overflow-y-auto custom-scroll px-6 py-4 space-y-2">
@@ -305,7 +329,7 @@
                 <h2 class="text-2xl font-bold">&#x1F4CB; Review Queue</h2>
                 <p class="text-sm text-gray-500 mt-0.5">Questions edited and waiting to be marked Complete. Edit if needed, then mark Complete.</p>
             </div>
-            <button onclick="document.getElementById('reviewQueueModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            <button onclick="closeModal('reviewQueueModal')" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
         </div>
         <!-- Scrollable content -->
         <div id="reviewQueueContent" class="flex-1 overflow-y-auto custom-scroll p-6 space-y-6">
@@ -319,7 +343,7 @@
     <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold">Pending Signup Requests</h2>
-            <button onclick="document.getElementById('pendingRequestsModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+            <button onclick="closeModal('pendingRequestsModal')" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
         </div>
 
         <div id="pendingRequestsContent" class="space-y-3">
@@ -327,7 +351,7 @@
         </div>
 
         <div class="flex justify-end pt-4 border-t mt-6">
-            <button onclick="document.getElementById('pendingRequestsModal').classList.add('hidden')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">Close</button>
+            <button onclick="closeModal('pendingRequestsModal')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">Close</button>
         </div>
     </div>
 </div>
@@ -338,7 +362,7 @@
     <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl flex flex-col" style="height:88vh">
         <div class="flex justify-between items-center px-6 py-4 border-b flex-shrink-0">
             <h2 class="text-2xl font-bold">Question History</h2>
-            <button onclick="document.getElementById('questionHistoryModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            <button onclick="closeModal('questionHistoryModal')" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
         </div>
 
         <div id="historyContent" class="flex-1 overflow-y-auto custom-scroll p-6 space-y-4">
@@ -346,7 +370,7 @@
         </div>
 
         <div class="flex justify-end px-6 py-4 border-t flex-shrink-0">
-            <button onclick="document.getElementById('questionHistoryModal').classList.add('hidden')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">
+            <button onclick="closeModal('questionHistoryModal')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">
                 Close
             </button>
         </div>
@@ -359,7 +383,7 @@
     <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl flex flex-col" style="height:90vh">
         <div class="flex justify-between items-center px-6 py-4 border-b flex-shrink-0">
             <h2 class="text-2xl font-bold">Activity Log</h2>
-            <button onclick="document.getElementById('highLevelHistoryModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            <button onclick="closeModal('highLevelHistoryModal')" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
         </div>
 
         <div id="highLevelHistoryContent" class="flex-1 overflow-y-auto custom-scroll p-6 space-y-3">
@@ -371,7 +395,7 @@
                 <button id="btnBackfillAudit" onclick="handleBackfillEdits()" class="hidden bg-yellow-100 text-yellow-800 px-3 py-1 rounded text-sm font-semibold mr-2">Backfill audit logs</button>
             </div>
             <div>
-                <button onclick="document.getElementById('highLevelHistoryModal').classList.add('hidden')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">
+                <button onclick="closeModal('highLevelHistoryModal')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">
                     Close
                 </button>
             </div>
@@ -382,20 +406,24 @@
 
 <!-- QUESTION COMPARISON MODAL -->
 <div id="questionComparisonModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold">Track Versions</h2>
-            <button onclick="document.getElementById('questionComparisonModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700 text-2xl">
-                [×]
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col" style="height:88vh">
+        <!-- Fixed Header -->
+        <div class="flex-shrink-0 bg-white rounded-t-lg px-4 sm:px-6 py-3 sm:py-4 border-b flex justify-between items-center">
+            <h2 class="text-xl sm:text-2xl font-bold">Track Versions</h2>
+            <button onclick="closeModal('questionComparisonModal')" class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 hover:bg-red-500 text-gray-700 hover:text-white transition-all text-3xl font-bold leading-none" title="Close (Esc)">
+                ×
             </button>
         </div>
 
-        <div id="comparisonContent" class="space-y-4">
+        <!-- Scrollable Content -->
+        <div id="comparisonContent" class="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 space-y-4">
             <div class="text-center text-gray-400 py-8">Loading...</div>
         </div>
 
-        <div class="flex justify-end pt-4 border-t mt-6">
-            <button onclick="document.getElementById('questionComparisonModal').classList.add('hidden')" class="orange-button px-4 py-2 rounded-md text-sm font-medium">
+        <!-- Fixed Footer -->
+        <div class="flex-shrink-0 bg-white rounded-b-lg px-4 sm:px-6 py-3 sm:py-4 border-t flex justify-between items-center">
+            <div></div>
+            <button onclick="closeModal('questionComparisonModal')" class="orange-button px-6 py-2 rounded-md text-sm font-medium">
                 Close
             </button>
         </div>
@@ -404,7 +432,7 @@
 
 
 <!-- TOAST CONTAINER -->
-<div id="toastContainer" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 items-end pointer-events-none"></div>
+<div id="toastContainer" class="fixed bottom-6 right-6 flex flex-col gap-2 items-end pointer-events-none" style="z-index: 2147483647;"></div>
 
 <script src="api.js"></script>
 <script src="ui.js"></script>

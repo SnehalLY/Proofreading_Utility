@@ -5,7 +5,6 @@ const backendOrigin = (isLocalHost && frontendDevPorts.includes(window.location.
     : window.location.origin;
 
 const API_BASE = `${backendOrigin}/api`;
-console.log("✅ api.js loaded, API_BASE:", API_BASE);
 
 // =====================================================
 // AUTHENTICATION APIS
